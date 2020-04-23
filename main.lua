@@ -44,7 +44,6 @@ local function refresh()
             end
         end
     end
-    -- TODO: Add hint (press H to see) that says how many sets there are.
 end
 
 local function toggle_card(card)
@@ -103,7 +102,12 @@ function love.mousepressed(mx, my, button)
             local n = i + (j * GRID_WIDTH)
             toggle_card(board[n])
         else
-
+            local cx = (screen_width - board_width) / 2
+            local cy = (screen_height - board_height) / 2
+            local i = math.ceil((mx - cx) / (Card.width + PADDING))
+            local j = math.floor((my - cy) / (Card.height + PADDING))
+            local n = i + (j * GRID_WIDTH)
+            toggle_card(board[n])
         end
     end
     if button == 2 then
