@@ -157,8 +157,7 @@ function love.draw()
     end
     love.graphics.pop()
     love.graphics.setColor(0, 0, 0)
-    -- TODO: Print time as minutes and seconds
-    local clock = ("%02.2f"):format(timer)
+    local clock = string.format("%02d:%05.2f", math.floor(timer / 60), timer % 60)
     love.graphics.printf(clock, 0, 0, screen_width, "center")
     love.graphics.printf(tostring(#found_sets) .. " sets found.", 0, 16, screen_width, "center")
     if show_hint then
