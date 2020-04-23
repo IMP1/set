@@ -1,115 +1,125 @@
 local card = {}
 card.__index = card
 
-card.colours = {
+local SHAPE_IMAGE_MASK = love.graphics.newShader([[
+    vec4 effect(vec4 colour, Image texture, vec2 texture_coords, vec2 screen_coords)
+    {
+        if (Texel(texture, texture_coords).a == 0)
+        {
+            discard;
+        }
+        return vec4(1.0);
+    }
+]])
+
+local SHAPE_IMAGE = love.graphics.newImage("shapes.png")
+local SHAPE_QUADS = {
+    diamond = {
+        empty = love.graphics.newQuad(0 * 64, 0, 64, 128, SHAPE_IMAGE:getWidth(), SHAPE_IMAGE:getHeight()),
+        full = love.graphics.newQuad(0 * 64, 128, 64, 128, SHAPE_IMAGE:getWidth(), SHAPE_IMAGE:getHeight()),
+    },
+    oval = {
+        empty = love.graphics.newQuad(1 * 64, 0, 64, 128, SHAPE_IMAGE:getWidth(), SHAPE_IMAGE:getHeight()),
+        full = love.graphics.newQuad(1 * 64, 128, 64, 128, SHAPE_IMAGE:getWidth(), SHAPE_IMAGE:getHeight()),
+    },
+    squiggle = {
+        empty = love.graphics.newQuad(2 * 64, 0, 64, 128, SHAPE_IMAGE:getWidth(), SHAPE_IMAGE:getHeight()),
+        full = love.graphics.newQuad(2 * 64, 128, 64, 128, SHAPE_IMAGE:getWidth(), SHAPE_IMAGE:getHeight()),
+    },
+}
+
+local NUMBER_OFFSETS = {
+    [1] = {0},
+    [2] = {-32, 32},
+    [3] = {-64, 0, 64},
+}
+
+local COLOURS = {
     red    = {1, 0, 0},
     green  = {0, 1, 0},
     purple = {0.6, 0, 1},
 }
 
-local PI = math.pi
-
-card.shapes = {
-    diamond  = {0, -1, 1, 0, 0, 1, -1, 0},
-    oval     = {0, -1, 0.3, -0.9, 0.5, -0.75, 0.8, -0.4, 0.8, 0.4, 0.5, 0.75, 0.3, 0.9, 0, 1, -0.3, 0.9, -0.5, 0.75, -0.8, 0.4, -0.8, -0.4, -0.5, -0.75, -0.3, -0.9},
-    squiggle = {0, -1, 1, 0, 0, 1, -1, 0},
-    diamond  = function(fill)
-        love.graphics.polygon(fill, 0, -card.shape_height, card.shape_width, 0, 0, card.shape_height, -card.shape_width, 0)
-    end,
-    oval = function(fill)
-        local r = card.shape_width / 2
-        love.graphics.arc(fill, "open", 0, r - card.shape_height, r * 2, -PI, 0)
-        if fill == "line" then
-            love.graphics.line(-card.shape_width, r - card.shape_height, -card.shape_width, card.shape_height - r)
-            love.graphics.line(card.shape_width, r - card.shape_height, card.shape_width, card.shape_height - r)
-        else
-            love.graphics.rectangle("fill", -card.shape_width, r - card.shape_height, card.shape_width * 2, (card.shape_height - r) * 2)
-        end
-        love.graphics.arc(fill, "open", 0, card.shape_height - r, r * 2, 0, PI)
-    end,
-    squiggle = function(fill)
-        -- local path = {}
-        -- love.graphics.polygon(fill, path)
-        love.graphics.arc(fill, "open", -card.shape_width, card.shape_width - card.shape_height, card.shape_width, -5 * PI / 8, PI / 8)
-        love.graphics.arc(fill, "open", card.shape_width * PI / 5, -card.shape_width * PI / 8, card.shape_width, 5 * PI / 8, 10 * PI / 8)
-    end
-}
-
-card.fills = {
-    full    = 0,
-    empty   = 1,
-    striped = 2,
-}
-
-card.numbers = {
-    [1] = {0},
-    [2] = {-20, 20},
-    [3] = {-30, 0, 30},
+local FILLS = {
+    empty   = 0,
+    striped = 1,
+    full    = 2,
 }
 
 local STRIPE_COUNT = 10
 
-card.width  = 96 -- pixels
-card.height = 128 -- pixels
+card.shape_width = 64
+card.shape_height = 128
+card.width  = 192 -- pixels
+card.height = 256 -- pixels
 
-card.shape_width  = 12 -- pixels
-card.shape_height = 32 -- pixels
+function card.random()
+    local number = ({1, 2, 3})[math.ceil(math.random() * 3)]
+    local colour = ({"red", "green", "purple"})[math.ceil(math.random() * 3)]
+    local shape  = ({"diamond", "oval", "squiggle"})[math.ceil(math.random() * 3)]
+    local fill   = ({"empty", "striped", "full"})[math.ceil(math.random() * 3)]
+    return card.new(number, colour, shape, fill)
+end
 
-function card.new(x, y, number, colour, shape, fill)
+function card.new(number, colour, shape, fill)
     local self = {}
     setmetatable(self, card)
 
-    self.x = x
-    self.y = y
+    assert(NUMBER_OFFSETS[number], "Invalid number (" .. number .. ")")
+    assert(COLOURS[colour], "Invalid colour (" .. colour .. ")")
+    assert(SHAPE_QUADS[shape], "Invalid shape (" .. shape .. ")")
+    assert(FILLS[fill], "Invalid fill (" .. fill .. ")")
     self.colour = colour
     self.number = number
     self.shape = shape
     self.fill = fill
+    self.canvas = love.graphics.newCanvas(card.width, card.height)
+
+    love.graphics.push()
+    love.graphics.setCanvas({self.canvas, stencil=true})
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.rectangle("line", 0, 0, card.width, card.height, 6, 6)
+    love.graphics.setColor(COLOURS[self.colour])
+    love.graphics.translate(card.width / 2, card.height / 2)
+    for i = 1, self.number do
+        love.graphics.push()
+        love.graphics.translate(NUMBER_OFFSETS[self.number][i], 0)
+        self:drawShape()
+        love.graphics.pop()
+    end
+    love.graphics.setCanvas()
+    love.graphics.pop()
 
     return self
 end
 
 function card:drawShape()
-    -- local polygon = {}
-    -- for i = 1, #self.shape, 2 do
-        -- table.insert(polygon, self.shape[i] * card.shape_width)
-        -- table.insert(polygon, self.shape[i + 1] * card.shape_height)
-    -- end
-    local fill = "line"
-    if self.fill == card.fills.striped then
+    local fill = self.fill
+    if fill == "striped" then
         love.graphics.stencil(function() 
-            self.shape("fill")
-            -- love.graphics.polygon("fill", polygon)
-        end)
+            love.graphics.setShader(SHAPE_IMAGE_MASK)
+            local quad = SHAPE_QUADS[self.shape]["full"]
+            local _, _, w, h = quad:getViewport()
+            love.graphics.draw(SHAPE_IMAGE, quad, 0, 0, 0, 1, 1, w / 2, h / 2)
+            love.graphics.setShader()
+        end, "replace", 1)
         love.graphics.setStencilTest("greater", 0)
         for i = 1, STRIPE_COUNT + 1 do
-            local y = (i - STRIPE_COUNT / 2 - 1) * (self.shape_height * 2) / STRIPE_COUNT
+            local y = (i - STRIPE_COUNT / 2 - 1) * (self.shape_height) / STRIPE_COUNT
+            -- TODO: Set line width to slightly higher, and edit the outline image to have a thicker line
             love.graphics.line(-card.shape_width, y, card.shape_width, y)
         end
         love.graphics.setStencilTest()
+        fill = "empty"
     end
-    if self.fill == card.fills.full then
-        fill = "fill"
-    end
-    self.shape(fill)
-    -- love.graphics.polygon(fill, polygon)
+    local quad = SHAPE_QUADS[self.shape][fill]
+    local _, _, w, h = quad:getViewport()
+    love.graphics.draw(SHAPE_IMAGE, quad, 0, 0, 0, 1, 1, w / 2, h / 2)
 end
 
-function card:draw()
-    love.graphics.push()
-    love.graphics.translate(self.x, self.y)
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.rectangle("line", 0, 0, card.width, card.height, 6, 6)
-    love.graphics.setColor(self.colour)
-    love.graphics.translate(card.width / 2, card.height / 2)
-    for i = 1, self.number do
-        -- TODO: do translating here
-        love.graphics.push()
-        love.graphics.translate(card.numbers[self.number][i], 0)
-        self:drawShape()
-        love.graphics.pop()
-    end
-    love.graphics.pop()
+function card:draw(x, y)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.draw(self.canvas, x, y)
 end
 
 return card
