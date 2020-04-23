@@ -12,6 +12,21 @@ local SHAPE_IMAGE_MASK = love.graphics.newShader([[
     }
 ]])
 
+card.DIMENSIONS = {
+    colour = {
+        "red", "green", "purple",
+    },
+    number = {
+        1, 2, 3,
+    },
+    shape = {
+        "diamond", "oval", "squiggle",
+    },
+    fill = {
+        "empty", "striped", "full",
+    },
+}
+
 local SHAPE_IMAGE = love.graphics.newImage("shapes.png")
 local SHAPE_QUADS = {
     diamond = {
@@ -53,13 +68,6 @@ card.shape_height = 128
 card.width  = 192 -- pixels
 card.height = 256 -- pixels
 
-function card.random()
-    local number = ({1, 2, 3})[math.ceil(math.random() * 3)]
-    local colour = ({"red", "green", "purple"})[math.ceil(math.random() * 3)]
-    local shape  = ({"diamond", "oval", "squiggle"})[math.ceil(math.random() * 3)]
-    local fill   = ({"empty", "striped", "full"})[math.ceil(math.random() * 3)]
-    return card.new(number, colour, shape, fill)
-end
 
 function card.new(number, colour, shape, fill)
     local self = {}
