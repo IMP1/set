@@ -1,6 +1,8 @@
 local scene_manager = require 'scene_manager'
 
 local Game = require 'game'
+-- TODO: Have a challenge mode where there are 6 sets and the cards aren't replaced.
+local Challenge = require 'game'
 local Instructions = require 'instructions'
 
 local title = {}
@@ -12,6 +14,12 @@ local BUTTONS = {
         text = "Play",
         action = function()
             scene_manager.pushScene(Game.new())
+        end,
+    },
+    {
+        text = "Challenge",
+        action = function()
+            scene_manager.pushScene(Challenge.new())
         end,
     },
     {
@@ -38,6 +46,7 @@ end
 function title:mousePressed(mx, my, button)
     if my >= love.graphics.getHeight() - 128 and my <= love.graphics.getHeight() - 64 then
         local n = 1
+        -- TODO: Find correct button (and check if actually over it)
         BUTTONS[n].action()
     end
 end
