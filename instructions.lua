@@ -10,6 +10,8 @@ function instructions.new()
     return self
 end
 
+-- TODO: Show instructions on game.
+
 function instructions:draw()
 end
 
